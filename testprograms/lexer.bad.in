@@ -1,0 +1,19 @@
+object Main { /* Comment */
+    def main(): Unit = {
+        // Singleline
+        var x = 5;
+
+        return x + 2;
+    }
+
+    def string(): String = {
+        "Hal\tlo\\!" + "Wurst!";
+        äöß
+        1234  // Good Integer
+        01000 // Bad Integer
+    }
+    "Bad string
+    'Good \n Noescape'
+}
+'Bad string
+/* unended comment

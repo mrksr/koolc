@@ -1,0 +1,12 @@
+object Wurst {
+    def main(): Unit = {
+        println(5 || käse.stuff(3) == Wurst.argh(1,2,3).kill()[5]);
+
+        if (false)
+            if (true)
+                z = y + 2 - 4;
+                k = r;
+            else
+                x = r + "bla";
+    }
+}

@@ -1,0 +1,34 @@
+object Wurst {
+    def main(): Unit = {
+        println(5 || käse.stuff(3) == Wurst.argh(1,2,3).kill()[5]);
+
+        if (false)
+            if (true)
+                x = y + 2;
+            else
+                x = r + "bla";
+    }
+}
+
+class Käse {
+    var isMoldy: Bool;
+    var not: Int[];
+    var THISONE: Int;
+
+    def stuff(): String = {
+        var x: String;
+        var y: Int;
+
+        while (true) {
+
+        }
+
+        {
+            {
+                x = "Hallo";
+                println("Blargl");
+            }
+        }
+        return x;
+    }
+}
