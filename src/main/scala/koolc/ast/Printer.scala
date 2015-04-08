@@ -200,8 +200,8 @@ object Printer {
       case False()                                             => {
         "false"
       }
-      case Identifier(value)                                   => {
-        value
+      case i@Identifier(value)                                 => {
+        "%s#%s".format(value, i.sym.map(_.id).getOrElse("??"))
       }
 
       case This()                                              => {
