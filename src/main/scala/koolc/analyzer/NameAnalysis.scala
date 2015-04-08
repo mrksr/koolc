@@ -67,10 +67,11 @@ object NameAnalysis extends Pipeline[Program, Program] {
 
       case m@MethodDecl(retType, id, args, vars, stats, retExpr) => {
         parent.get.getSymbol match {
-          case ps: ClassSymbol =>
+          case ps: ClassSymbol => {
             val s = m.setSymbol(new MethodSymbol(id.value, ps)).getSymbol
             s.setPos(m)
             id.setSymbol(s)
+          }
 
           case _ =>
         }
@@ -273,9 +274,9 @@ object NameAnalysis extends Pipeline[Program, Program] {
 
           start.methods.values.map(m => method(m, p).map((_, m))).flatten.foreach {
             case (a, b) =>
-              if (a.params.size == b.params.size)
+              if (a.params.size == b.params.size) {
                 b.overridden = Some(a)
-              else {
+              } else {
                 ctx.reporter.error("Disallowed shadowing of method '%s'.".format(a.name), b)
                 ctx.reporter.error("First declaration is here.", a)
               }
