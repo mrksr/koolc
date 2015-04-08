@@ -61,7 +61,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
 
         case m@MethodDecl(retType, id, args, vars, stats, retExpr) => {
           parent.get.getSymbol match {
-            case ps: ClassSymbol => 
+            case ps: ClassSymbol =>
               val s = m.setSymbol(new MethodSymbol(id.value, ps)).getSymbol
               s.setPos(m)
               id.setSymbol(s)
