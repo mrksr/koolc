@@ -1,0 +1,60 @@
+object Wurst {
+    def main(): Unit = {
+        println(5 || (new Käse()).stuff(3) == (new Blubb()).argh(1,2,3).kill()[5]);
+    }
+}
+
+class Object {
+    var foo: String;
+
+    def toString(): String = {
+        return foo;
+    }
+}
+
+class Käse extends Object {
+    var isMoldy: Bool;
+    var not: Int[];
+    var THISONE: Int;
+
+    def stuff(): String = {
+        var x: String;
+        var y: Int;
+
+        while (true) {
+
+        }
+
+        {
+            {
+                x = "Hallo";
+                println("Blargl");
+            }
+        }
+        return x;
+    }
+
+    def toString(y: Int, x: Int): String = {
+        return "Blubb";
+    }
+}
+
+class Blubb extends Käse {
+    var x: Int;
+    var foo: Int;
+
+    def asd(x: Int): Int = {
+        var y: Int;
+
+        x = 2;
+        return x;
+    }
+
+    def stuff(): String = {
+        return "asd";
+    }
+
+    def toString(x: Int): String = {
+        return "Blubb";
+    }
+}
