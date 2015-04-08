@@ -13,6 +13,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
     attach(ctx, prog, gs)
     ctx.reporter.terminateIfErrors
     inheritance(ctx, prog, gs)
+    ctx.reporter.terminateIfErrors
     prog
   }
 
@@ -24,7 +25,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
         case _: VariableSymbol => "Variable-"
         case _ => ""
       }
-      ctx.reporter.error("Duplicate %sdeclaration of %s.".format(tpe, a.name), b)
+      ctx.reporter.error("Duplicate %sdeclaration of '%s'.".format(tpe, a.name), b)
       ctx.reporter.error("First declaration is here.", a)
     }
 
@@ -110,6 +111,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
 
     if (s.classes.contains(s.mainClass.name)) {
       doubleDeclaration(s.mainClass, s.classes(s.mainClass.name))
+      s.classes = s.classes - s.mainClass.name
     }
 
     s
@@ -118,6 +120,11 @@ object NameAnalysis extends Pipeline[Program, Program] {
   def attach(ctx: Context, prog: Program, gs: GlobalScope): Unit = {
     def propagate[S <: Symbol](t: Tree, parent: Option[Symbolic[S]]): Unit = {
       t match {
+        case Program(main, classes) => {
+          propagate(main, None)
+          classes.foreach(propagate(_, None))
+        }
+
         case o@MainObject(id, stats) => {
           val main = new MethodSymbol("main", o.getSymbol)
           statements(main, stats)
@@ -134,7 +141,12 @@ object NameAnalysis extends Pipeline[Program, Program] {
         }
 
         case m@MethodDecl(retType, id, args, vars, stats, retExpr) => {
+          args.foreach(propagate(_, Some(m)))
+          vars.foreach(propagate(_, Some(m)))
 
+          typeparameter(retType)
+          statements(m.getSymbol, stats)
+          expression(m.getSymbol, retExpr)
         }
 
         case v@VarDecl(tpe, id) => {
@@ -155,11 +167,11 @@ object NameAnalysis extends Pipeline[Program, Program] {
           val s = gs.classes(value)
           i.setSymbol(s)
           Some(s)
-        } else if (value == gs.mainClass.getSymbol.name) {
+        } else if (value == gs.mainClass.name) {
           ctx.reporter.error("The main class '%s' is not a valid type.".format(value), i)
           None
         } else {
-          ctx.reporter.error("Unknown type %s.".format(value))
+          ctx.reporter.error("Unknown type '%s'.".format(value), i)
           None
         }
       }
@@ -167,14 +179,59 @@ object NameAnalysis extends Pipeline[Program, Program] {
     }
 
     def statements(ms: MethodSymbol, stats: List[StatTree]) {
+      def statement(stat: StatTree): Unit = stat match {
+        case Block(ss) => statements(ms, ss)
+        case If(expr, thn, None) => expression(ms, expr); statement(thn)
+        case If(expr, thn, Some(els)) => expression(ms, expr); statement(thn); statement(els)
+        case While(expr, stat) => expression(ms, expr); statement(stat)
+        case Println(expr) => expression(ms, expr)
+        case Assign(id, expr) => variable(ms, id); expression(ms, expr)
+        case ArrayAssign(id, index, expr) => variable(ms, id); expression(ms, index); expression(ms, expr)
+      }
 
+      stats.foreach(statement)
     }
+
+    def expression(ms: MethodSymbol, expr: ExprTree): Unit = expr match {
+      case And(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case Or(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case Plus(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case Minus(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case Times(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case Div(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case LessThan(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+      case Equals(lhs, rhs) => expression(ms, lhs); expression(ms, rhs)
+
+      case NewIntArray(size) => expression(ms, size)
+      case Not(expr) => expression(ms, expr)
+      case New(id) => typeparameter(id)
+
+      case ArrayRead(arr, index) => expression(ms, arr); expression(ms, index)
+      case ArrayLength(arr) => expression(ms, arr)
+      case MethodCall(obj, meth, args) => expression(ms, obj); args.foreach(expression(ms, _))
+
+      case i@Identifier(value) => variable(ms, i)
+      case t@This() => t.setSymbol(ms.classSymbol)
+
+      case _ =>
+    }
+
+    def variable(ms: MethodSymbol, id: Identifier) {
+      val Identifier(value) = id
+
+      ms.lookupVar(value).orElse(ms.classSymbol.lookupVar(value)) match {
+        case Some(s) => id.setSymbol(s)
+        case None => ctx.reporter.error("Use of undeclared variable '%s'.".format(value), id)
+      }
+    }
+
+    propagate(prog, None)
   }
 
   def inheritance(ctx: Context, prog: Program, gs: GlobalScope) {
-    def circular(start: ClassSymbol): Bool = {
-      def circ(curr: ClassSymbol): Bool =
-        if (curr.name == cls.name)
+    def circular(start: ClassSymbol) = {
+      def circ(curr: ClassSymbol): Boolean =
+        if (curr.name == start.name)
             true
         else curr.parent match {
           case None => false
@@ -187,11 +244,42 @@ object NameAnalysis extends Pipeline[Program, Program] {
       }
     }
 
+    def shadowing(start: ClassSymbol) = {
+      def field(vr: VariableSymbol, curr: ClassSymbol): Option[VariableSymbol] =
+        curr.lookupVar(vr.name).orElse(curr.parent.map(field(vr, _)).flatten)
+
+      def method(mt: MethodSymbol, curr: ClassSymbol): Option[MethodSymbol] =
+        curr.lookupMethod(mt.name).orElse(curr.parent.map(method(mt, _)).flatten)
+
+      start.parent match {
+        case Some(p) => {
+          start.members.values.map(m => field(m, p).map((_, m))).flatten.foreach {
+            case (a, b) =>
+              ctx.reporter.error("Disallowed shadowing of field '%s'.".format(a.name), b)
+              ctx.reporter.error("First declaration is here.", a)
+          }
+
+          start.methods.values.map(m => method(m, p).map((_, m))).flatten.foreach {
+            case (a, b) =>
+              if (a.params.size == b.params.size)
+                b.overridden = Some(a)
+              else {
+                ctx.reporter.error("Disallowed shadowing of method '%s'.".format(a.name), b)
+                ctx.reporter.error("First declaration is here.", a)
+              }
+          }
+        }
+        case None =>
+      }
+    }
+
     gs.classes.values.find(circular) match {
       case Some(c) => {
-        ctx.reporter.error("Class %s has a circular inheritance graph.".format(c.name), c)
+        ctx.reporter.error("Class '%s' has a circular inheritance graph.".format(c.name), c)
       }
       case None =>
     }
+
+    gs.classes.values.foreach(shadowing)
   }
 }
