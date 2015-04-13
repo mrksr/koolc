@@ -259,10 +259,16 @@ object NameAnalysis extends Pipeline[Program, Program] {
 
     def shadowing(start: ClassSymbol) = {
       def field(vr: VariableSymbol, curr: ClassSymbol): Option[VariableSymbol] =
-        curr.lookupVar(vr.name).orElse(curr.parent.map(field(vr, _)).flatten)
+        curr.lookupVar(vr.name)
+          .orElse(
+            curr.parent.map(field(vr, _)).flatten
+          )
 
       def method(mt: MethodSymbol, curr: ClassSymbol): Option[MethodSymbol] =
-        curr.lookupMethod(mt.name).orElse(curr.parent.map(method(mt, _)).flatten)
+        curr.lookupMethod(mt.name)
+          .orElse(
+            curr.parent.map(method(mt, _)).flatten
+          )
 
       start.parent match {
         case Some(p) => {
