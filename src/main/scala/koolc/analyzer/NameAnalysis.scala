@@ -43,6 +43,18 @@ object NameAnalysis extends Pipeline[Program, Program] {
         }
       }
 
+    def list[S <: Symbol](ss: List[Symbolic[S]]): List[S] =
+      (List[S]() /: ss) {
+        (l, sc) => {
+          val s = sc.getSymbol
+          if (l.exists(_.name == s.name)) {
+            l
+          } else {
+            s :: l
+          }
+        }
+      }.reverse
+
     def propagate[S <: Symbol](t: Tree, parent: Option[Symbolic[S]]): Unit = t match {
       case o@MainObject(id, stats) => {
         val s = o.setSymbol(new ClassSymbol(id.value)).getSymbol
@@ -81,6 +93,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
 
         val s = m.getSymbol
         s.params = map(args, Map())
+        s.argList = list(args)
         s.members = map(vars, s.params)
       }
 
