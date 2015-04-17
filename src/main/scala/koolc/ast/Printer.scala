@@ -204,8 +204,8 @@ object Printer {
         "%s#%s".format(value, i.sym.map(_.id).getOrElse("??"))
       }
 
-      case This()                                              => {
-        "this"
+      case t@This()                                            => {
+        "this#%s".format(t.sym.map(_.id).getOrElse("??"))
       }
       case NewIntArray(size)                                   => {
         "new Int[%s]".format(
