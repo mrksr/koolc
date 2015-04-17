@@ -132,8 +132,12 @@ object NameAnalysis extends Pipeline[Program, Program] {
     (gs, vars, clss)
   }
 
-  def attach(ctx: Context, prog: Program, gs: GlobalScope,
-    vars: Set[VariableSymbol], clss: Set[ClassSymbol]): Unit = {
+  def attach( ctx: Context,
+              prog: Program,
+              gs: GlobalScope,
+              vars: Set[VariableSymbol],
+              clss: Set[ClassSymbol]
+            ): Unit = {
     var uvars = vars
     var uclss = clss
     def propagate[S <: Symbol](t: Tree, parent: Option[Symbolic[S]]): Unit = {
@@ -197,7 +201,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
       case _ => None
     }
 
-    def statements(ms: MethodSymbol, stats: List[StatTree]) {
+    def statements(ms: MethodSymbol, stats: List[StatTree]): Unit = {
       def statement(stat: StatTree): Unit = stat match {
         case Block(ss) => statements(ms, ss)
         case If(expr, thn, None) => expression(ms, expr); statement(thn)
@@ -235,7 +239,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
       case _ =>
     }
 
-    def variable(ms: MethodSymbol, id: Identifier) {
+    def variable(ms: MethodSymbol, id: Identifier): Unit = {
       val Identifier(value) = id
 
       ms.lookupVar(value).orElse(ms.classSymbol.lookupVar(value)) match {
@@ -254,7 +258,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
     }
   }
 
-  def inheritance(ctx: Context, prog: Program, gs: GlobalScope) {
+  def inheritance(ctx: Context, prog: Program, gs: GlobalScope): Unit = {
     def circular(start: ClassSymbol) = {
       def circ(curr: ClassSymbol): Boolean =
         if (curr.name == start.name)
