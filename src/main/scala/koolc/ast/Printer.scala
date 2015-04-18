@@ -201,11 +201,18 @@ object Printer {
         "false"
       }
       case i@Identifier(value)                                 => {
-        "%s#%s".format(value, i.sym.map(_.id).getOrElse("??"))
+        "%s#%s#%s".format(
+          value,
+          i.sym.map(_.id).getOrElse("??"),
+          i.sym.map(_.getType).getOrElse("")
+        )
       }
 
       case t@This()                                            => {
-        "this#%s".format(t.sym.map(_.id).getOrElse("??"))
+        "this#%s#%s".format(
+          t.sym.map(_.id).getOrElse("??"),
+          t.sym.map(_.getType).getOrElse("")
+        )
       }
       case NewIntArray(size)                                   => {
         "new Int[%s]".format(
