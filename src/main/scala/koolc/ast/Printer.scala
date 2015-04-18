@@ -2,6 +2,8 @@ package koolc
 package ast
 
 import Trees._
+import analyzer.Symbols._
+import analyzer.Types._
 
 object Printer {
   def apply(t: Tree): String = autoindent(pretty(t))
@@ -50,8 +52,7 @@ object Printer {
       case _ => Block(List(t)).setPos(t)
     }
 
-    val p =
-    t match {
+    val p = t match {
       case Program(main, classes)                              => {
         "%s%s".format(
           pretty(main),
@@ -201,18 +202,11 @@ object Printer {
         "false"
       }
       case i@Identifier(value)                                 => {
-        "%s#%s#%s".format(
-          value,
-          i.sym.map(_.id).getOrElse("??"),
-          i.sym.map(_.getType).getOrElse("")
-        )
+        value
       }
 
       case t@This()                                            => {
-        "this#%s#%s".format(
-          t.sym.map(_.id).getOrElse("??"),
-          t.sym.map(_.getType).getOrElse("")
-        )
+        "this"
       }
       case NewIntArray(size)                                   => {
         "new Int[%s]".format(
@@ -228,7 +222,17 @@ object Printer {
       }
     }
 
-    // "[%s]%s".format(t.position, p)
-    p
+    val withSymbol = t match {
+      case s: Symbolic[_] =>
+        "%s#%s".format(p, s.sym.map(_.id).getOrElse("??"))
+      case _ => p
+    }
+    val withType = t match {
+      case t: Typed =>
+        "<%s^%s>".format(withSymbol, t.getType)
+      case _ => withSymbol
+    }
+
+    withType
   }
 }

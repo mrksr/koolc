@@ -36,7 +36,7 @@ object TypeChecking extends Pipeline[Program, Program] {
   }
 
   private def variables(ctx: Context)(t: Tree): Unit = {
-    def single(sym: Symbol, tpeTree: TypeTree): Unit = {
+    def single(sym: Symbol, tpeTree: TypeTree): Type = {
       val tpe: Type = tpeTree match {
         case IntType() => TInt
         case IntArrayType() => TIntArray
@@ -45,7 +45,9 @@ object TypeChecking extends Pipeline[Program, Program] {
         case i@Identifier(_) => i.getSymbol.getType
       }
 
+      tpeTree.setType(tpe)
       sym.setType(tpe)
+      tpe
     }
 
     t match {
@@ -63,7 +65,7 @@ object TypeChecking extends Pipeline[Program, Program] {
         single(f.getSymbol, tpe)
 
       case m@MethodDecl(retType, _, args, vars, _, _) =>
-        single(m.getSymbol, retType)
+        m.getSymbol.setType(TMethod(m.getSymbol, single(m.getSymbol, retType)))
         args.foreach(variables(ctx))
         vars.foreach(variables(ctx))
 
@@ -141,7 +143,7 @@ object TypeChecking extends Pipeline[Program, Program] {
         case LessThan(lhs, rhs) =>
           tcExpr(lhs, TInt)
           tcExpr(rhs, TInt)
-          TInt
+          TBoolean
 
         // Overloaded Operators
         case Plus(lhs, rhs) =>
@@ -152,8 +154,17 @@ object TypeChecking extends Pipeline[Program, Program] {
             case _ => TString
           }
 
-        case Equals(lhs, rhs) =>
-          ???
+        case e@Equals(lhs, rhs) =>
+          val lt = tcExpr(lhs, anyObject, TInt, TIntArray, TString, TBoolean)
+          val rt = tcExpr(rhs, anyObject, TInt, TIntArray, TString, TBoolean)
+          if (lt != rt) {
+            (lt, rt) match {
+              case (TObject(_), TObject(_)) =>
+              case _ =>
+                ctx.reporter.error("Cannot compare %s to %s".format(lt, rt), e)
+            }
+          }
+          TBoolean
 
         // "Object" operations
         case ArrayRead(arr, index) =>
@@ -165,11 +176,28 @@ object TypeChecking extends Pipeline[Program, Program] {
           tcExpr(arr, TIntArray)
           TInt
 
-        case MethodCall(obj, meth, args) =>
-          ???
+        case MethodCall(obj, i@Identifier(name), args) =>
+          val TObject(cs) = tcExpr(obj, anyObject)
+          cs.lookupMethod(name) match {
+            case None =>
+              ctx.reporter.error("Type '%s' has no method '%s'".format(cs.name, name), i)
+              TError
+            case Some(method) =>
+              if (args.length != method.argList.length)
+                ctx.reporter.error("Wrong number of arguments for method '%s' in '%s'.".format(name, cs.name), i)
+              else
+                args.zip(method.argList).foreach {
+                  case (expr, vs) => tcExpr(expr, vs.getType)
+                }
+
+              i.setSymbol(method)
+              val TMethod(_, retType) = method.getType
+              retType
+          }
       }
 
 
+      expr.setType(tpe)
       // Check result and return a valid type in case of error
       if (expected.isEmpty) {
         tpe
@@ -202,12 +230,13 @@ object TypeChecking extends Pipeline[Program, Program] {
 
       case ArrayAssign(id, index, expr) =>
         tcExpr(index, TInt)
-        tcExpr(expr, id.getSymbol.getType)
+        tcExpr(expr, TInt)
     }
 
     def tcMethod(method: MethodDecl): Unit = method match {
       case m@MethodDecl(_, _, _, _, stats, retExpr) =>
-        tcExpr(retExpr, m.getSymbol.getType)
+        val TMethod(_, retType) = m.getSymbol.getType
+        tcExpr(retExpr, retType)
         stats.foreach(tcStat)
     }
 

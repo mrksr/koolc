@@ -63,7 +63,7 @@ object Types {
     override def isSubTypeOf(tpe: Type): Boolean = {
       def subtype(parent: ClassSymbol, curr: ClassSymbol): Boolean =
         if (curr == parent) true
-        else curr.parent.map(subtype(parent, _)).getOrElse(curr.getType == anyObject)
+        else curr.parent.map(subtype(parent, _)).getOrElse(parent.getType == anyObject)
 
       tpe match {
         case TObject(inner) => subtype(inner, classSymbol)
@@ -73,6 +73,19 @@ object Types {
     override def toString = classSymbol.name
   }
 
+  case class TMethod(methodSymbol: MethodSymbol, retType: Type) extends Type {
+    override def isSubTypeOf(tpe: Type): Boolean = tpe == this
+    override def toString = "(%s) => %s".format(
+      methodSymbol.argList.map(_.getType).mkString(", "),
+      retType
+    )
+  }
+
   // special object to implement the fact that all objects are its subclasses
-  val anyObject = TObject(new ClassSymbol("Object"))
+  val anyObject = {
+    val cs = new ClassSymbol("Object")
+    val ao = TObject(cs)
+    cs.setType(ao)
+    ao
+  }
 }
