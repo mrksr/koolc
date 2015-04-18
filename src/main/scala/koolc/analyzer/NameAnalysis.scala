@@ -8,17 +8,17 @@ import Symbols._
 object NameAnalysis extends Pipeline[Program, Program] {
   def run(ctx: Context)(prog: Program): Program = {
     // All methods here have heavy side-effects!
-    val (gs, vars, clss) = initial(ctx, prog)
+    val (gs, vars, clss) = initial(ctx)(prog)
     ctx.reporter.terminateIfErrors
-    attach(ctx, prog, gs, vars, clss)
+    attach(ctx)(prog, gs, vars, clss)
     ctx.reporter.terminateIfErrors
-    inheritance(ctx, prog, gs)
+    inheritance(ctx)(prog, gs)
     ctx.reporter.terminateIfErrors
     prog
   }
 
-  var vars = Set[VariableSymbol]()
-  def initial[S <: Symbol](ctx: Context, prog: Program) = {
+  private var vars = Set[VariableSymbol]()
+  private def initial[S <: Symbol](ctx: Context)(prog: Program) = {
     def doubleDeclaration[T <: Symbol](a: T, b: T) {
       val tpe = a match {
         case _: ClassSymbol => "Class-"
@@ -132,12 +132,12 @@ object NameAnalysis extends Pipeline[Program, Program] {
     (gs, vars, clss)
   }
 
-  def attach( ctx: Context,
-              prog: Program,
-              gs: GlobalScope,
-              vars: Set[VariableSymbol],
-              clss: Set[ClassSymbol]
-            ): Unit = {
+  private def attach( ctx: Context )(
+                      prog: Program,
+                      gs: GlobalScope,
+                      vars: Set[VariableSymbol],
+                      clss: Set[ClassSymbol]
+                    ): Unit = {
     var uvars = vars
     var uclss = clss
     def propagate[S <: Symbol](t: Tree, parent: Option[Symbolic[S]]): Unit = {
@@ -258,7 +258,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
     }
   }
 
-  def inheritance(ctx: Context, prog: Program, gs: GlobalScope): Unit = {
+  private def inheritance(ctx: Context)(prog: Program, gs: GlobalScope): Unit = {
     def circular(start: ClassSymbol) = {
       def circ(curr: ClassSymbol): Boolean =
         if (curr.name == start.name)
