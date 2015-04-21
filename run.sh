@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-REFC="scala -cp ./reference/koolc_2.11-1.2.jar:./reference/cafebabe_2.11-1.2.jar koolc.Main"
+REFC="scala -cp ./reference/koolc_2.11-1.3.1.jar:./reference/cafebabe_2.11-1.2.jar koolc.Main"
 MYC="scala -cp ./target/scala-2.11/koolc_2.11-1.0.jar koolc.Main"
 TESTDIR="./testprograms/lab3/valid"
 
@@ -12,12 +12,17 @@ TESTDIR="./testprograms/lab3/valid"
 #     diff -q /tmp/reftokens.koolc /tmp/mytokens.koolc
 # done
 
+# for p in $TESTDIR/*; do
+#     echo "*************************"
+#     echo "* Testing AST: $p"
+#     ${=REFC} --ast $p               > /tmp/refast.koolc
+#     ${=MYC}        $p               > /tmp/myast.koolc
+#     ${=REFC} --ast /tmp/myast.koolc > /tmp/normast.koolc
+#     diff -q /tmp/refast.koolc /tmp/normast.koolc
+# done
+
 for p in $TESTDIR/*; do
     echo "*************************"
-    echo "* Testing AST: $p"
-    ${=REFC} --ast $p               > /tmp/refast.koolc
-    ${=MYC}        $p               > /tmp/myast.koolc
-    ${=REFC} --ast /tmp/myast.koolc > /tmp/normast.koolc
-    diff -q /tmp/refast.koolc /tmp/normast.koolc
+    echo "* Testing symid: $p"
+    ${=REFC} --symid $p > /tmp/refsymid.koolc
 done
-
