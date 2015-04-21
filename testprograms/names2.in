@@ -1,0 +1,30 @@
+object Wurst {
+    def main(): Unit = {
+        println(5 < (new Middle()).stuff(3));
+    }
+}
+
+class Top {
+
+}
+
+class Middle extends Top {
+    var foo: String;
+    var bar: Int;
+
+    def toString(): String = {
+        var baz: Int;
+
+        baz = 3;
+        bar = baz + 2;
+        return foo;
+    }
+
+    def stuff(x: Int): Int = {
+        return x;
+    }
+}
+
+class Bottom extends Middle {
+
+}
