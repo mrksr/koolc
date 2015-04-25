@@ -82,7 +82,7 @@ object Main {
       val pipeline = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking
       val program = pipeline.run(ctx)(ctx.file)
 
-      println(Printer(program))
+      println(Printer.annotated(program))
 
     } else {
       val pipeline = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking andThen CodeGeneration
