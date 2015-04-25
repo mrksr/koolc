@@ -152,8 +152,11 @@ object CodeGeneration extends Pipeline[Program, Unit] {
       case Println(expr) =>
         ch << GetStatic("java/lang/System", "out", "Ljava/io/PrintStream;")
         withAfter(ch, expression(ch, cs, vars, expr))
-        ch << InvokeVirtual("java/io/PrintStream", "println", "(%s)V".format(expr.getType.jvmType)) <<
-        Goto(after)
+        ch << InvokeVirtual(
+          "java/io/PrintStream",
+          "println",
+          "(%s)V".format(expr.getType.jvmType)
+        ) << Goto(after)
 
       case Assign(id, expr) =>
         if (vars.contains(id.getSymbol)) {
