@@ -135,7 +135,8 @@ object Parser extends Pipeline[Iterator[Token], Program] {
       type OpType = (ExprTree, ExprTree) => ExprTree
       val ops = List(
         Map[TokenKind, OpType](
-          (TIMES, Times), (DIV, Div)
+          (TIMES, Times),
+          (DIV, Div)
         ),
         Map[TokenKind, OpType](
           (PLUS, Plus),
@@ -155,15 +156,12 @@ object Parser extends Pipeline[Iterator[Token], Program] {
 
       (MethodReadLengthP /: ops) {
         case (inner, tkns) => {
-          def outer: Parser[ExprTree] = {
-            val opP = tkns.keys.map(token).reduce(_ || _)
-            inner ** optional(head ** opP ** outer) >> {
-              case (i, None) => i
-              case (i, Some(((pos, op), o))) => tkns(op.kind)(i, o).setPos(pos.get)
+          val opP = tkns.keys.map(token).reduce(_ || _)
+          inner ** star(head ** opP ** inner) >> { case (i, is) =>
+            (i /: is) {
+              case (lhs, ((pos, op),rhs)) => tkns(op.kind)(lhs, rhs).setPos(pos.get)
             }
           }
-
-          outer
         }
       }
     }
