@@ -6,6 +6,7 @@ import java.io.File
 import lexer._
 import ast._
 import analyzer._
+import code._
 
 object Main {
 
@@ -16,6 +17,8 @@ object Main {
     var files: List[File] = Nil
     var tokens = false
     var ast = false
+    var pretty = false
+    var typed = false
 
     def processOption(args: List[String]): Unit = args match {
       case "-d" :: out :: args =>
@@ -28,6 +31,14 @@ object Main {
 
       case "--ast" :: args =>
         ast = true
+        processOption(args)
+
+      case "--pretty" :: args =>
+        pretty = true
+        processOption(args)
+
+      case "--typed" :: args =>
+        typed = true
         processOption(args)
 
       case f ::args =>
@@ -43,7 +54,7 @@ object Main {
       reporter.fatal("Exactly one file expected, "+files.size+" file(s) given.")
     }
 
-    Context(reporter = reporter, file = files.head, outDir = outDir, tokens = tokens, ast = ast)
+    Context(reporter = reporter, file = files.head, outDir = outDir, tokens = tokens, ast = ast, pretty = pretty, typed = typed)
   }
 
 
@@ -61,11 +72,21 @@ object Main {
       val program = pipeline.run(ctx)(ctx.file)
 
       println(Printer.ast(program))
-    } else {
+    } else if (ctx.pretty) {
+      //TODO: This is not a strict pretty
       val pipeline = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking
       val program = pipeline.run(ctx)(ctx.file)
 
       println(Printer(program))
+    } else if (ctx.typed) {
+      val pipeline = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking
+      val program = pipeline.run(ctx)(ctx.file)
+
+      println(Printer(program))
+
+    } else {
+      val pipeline = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking andThen CodeGeneration
+      pipeline.run(ctx)(ctx.file)
     }
   }
 }

@@ -15,15 +15,18 @@ object Types {
 
   sealed abstract class Type {
     def isSubTypeOf(tpe: Type): Boolean
+    def jvmType(): String
   }
 
   case object TError extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = true
+    override def jvmType(): String = "V"
     override def toString = "[error]"
   }
 
   case object TUntyped extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = false
+    override def jvmType(): String = "V"
     override def toString = "[untyped]"
   }
 
@@ -32,6 +35,7 @@ object Types {
       case TInt => true
       case _ => false
     }
+    override def jvmType(): String = "I"
     override def toString = "Int"
   }
 
@@ -40,6 +44,7 @@ object Types {
       case TIntArray => true
       case _ => false
     }
+    override def jvmType(): String = "[I"
     override def toString = "Int[]"
   }
 
@@ -48,6 +53,7 @@ object Types {
       case TBoolean => true
       case _ => false
     }
+    override def jvmType(): String = "Z"
     override def toString = "Boolean"
   }
 
@@ -56,6 +62,7 @@ object Types {
       case TString => true
       case _ => false
     }
+    override def jvmType(): String = "Ljava/lang/String;"
     override def toString = "String"
   }
 
@@ -70,11 +77,16 @@ object Types {
         case _ => false
       }
     }
+    override def jvmType(): String = "L%s;".format(classSymbol.name)
     override def toString = classSymbol.name
   }
 
   case class TMethod(methodSymbol: MethodSymbol, retType: Type) extends Type {
     override def isSubTypeOf(tpe: Type): Boolean = tpe == this
+    override def jvmType(): String = "(%s)%s".format(
+      methodSymbol.argList.map(_.getType.jvmType).mkString(""),
+      retType.jvmType
+    )
     override def toString = "(%s) => %s".format(
       methodSymbol.argList.map(_.getType).mkString(", "),
       retType

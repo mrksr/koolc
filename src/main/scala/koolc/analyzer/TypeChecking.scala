@@ -147,8 +147,8 @@ object TypeChecking extends Pipeline[Program, Program] {
 
         // Overloaded Operators
         case Plus(lhs, rhs) =>
-          val lt = tcExpr(lhs, TInt, TString)
-          val rt = tcExpr(rhs, TInt, TString)
+          val lt = tcExpr(lhs, TInt, TBoolean, TString)
+          val rt = tcExpr(rhs, TInt, TBoolean, TString)
           (lt, rt) match {
             case (TInt, TInt) => TInt
             case _ => TString

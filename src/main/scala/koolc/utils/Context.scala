@@ -8,5 +8,7 @@ case class Context(
   val outDir: Option[File],
   val file: File,
   val tokens: Boolean,
-  val ast: Boolean
+  val ast: Boolean,
+  val pretty: Boolean,
+  val typed: Boolean
 )
