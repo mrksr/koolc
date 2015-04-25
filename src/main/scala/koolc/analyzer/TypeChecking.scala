@@ -106,7 +106,9 @@ object TypeChecking extends Pipeline[Program, Program] {
         case i@Identifier(_) => i.getSymbol.getType
         case t@This() => t.getSymbol.getType
 
-        case NewIntArray(_) => TIntArray
+        case NewIntArray(size) =>
+          tcExpr(size, TInt)
+          TIntArray
         case New(id) => id.getSymbol.getType
 
         // Boolean Operators
