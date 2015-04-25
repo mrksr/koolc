@@ -124,6 +124,7 @@ object CodeGeneration extends Pipeline[Program, Unit] {
     stmt match {
       case Block(stmts) =>
         stmts.foreach(st => withAfter(ch, statement(ch, cs, vars, st)))
+        ch << Goto(after)
 
       case If(expr, thn, els) =>
         val nTrue = ch.getFreshLabel("true")
@@ -131,7 +132,7 @@ object CodeGeneration extends Pipeline[Program, Unit] {
         branch(ch, cs, vars, expr)(nTrue, nFalse)
         ch << Label(nTrue)
         statement(ch, cs, vars, thn)(after)
-        ch << Label(nFalse)
+        ch << Goto(after) << Label(nFalse)
         els.map(statement(ch, cs, vars, _)(after))
 
       case While(expr, stat) =>
@@ -157,6 +158,7 @@ object CodeGeneration extends Pipeline[Program, Unit] {
           withAfter(ch, expression(ch, cs, vars, expr))
           ch << PutField(cs.name, id.getSymbol.name, id.getType.jvmType)
         }
+        ch << Goto(after)
 
       case ArrayAssign(id, index, expr) =>
         if (vars.contains(id.getSymbol)) {
@@ -167,7 +169,7 @@ object CodeGeneration extends Pipeline[Program, Unit] {
         }
         withAfter(ch, expression(ch, cs, vars, index))
         withAfter(ch, expression(ch, cs, vars, expr))
-        ch << IASTORE
+        ch << IASTORE << Goto(after)
     }
   }
 
@@ -211,7 +213,8 @@ object CodeGeneration extends Pipeline[Program, Unit] {
               "java/lang/StringBuilder",
               "toString",
               "()Ljava/lang/String;"
-            )
+            ) <<
+            Goto(after)
 
         case _ => ???
       }
@@ -243,11 +246,11 @@ object CodeGeneration extends Pipeline[Program, Unit] {
       case ArrayRead(arr, index) =>
         withAfter(ch, expression(ch, cs, vars, arr))
         withAfter(ch, expression(ch, cs, vars, index))
-        ch << IALOAD
+        ch << IALOAD << Goto(after)
 
       case ArrayLength(arr) =>
         withAfter(ch, expression(ch, cs, vars, arr))
-        ch << ARRAYLENGTH
+        ch << ARRAYLENGTH << Goto(after)
 
       case MethodCall(obj, meth, args) =>
         withAfter(ch, expression(ch, cs, vars, obj))
@@ -257,7 +260,8 @@ object CodeGeneration extends Pipeline[Program, Unit] {
           obj.getType.toString,
           mts.name,
           mts.getType.jvmType
-          )
+          ) <<
+          Goto(after)
 
       case id@Identifier(_) =>
         if (vars.contains(id.getSymbol)) {
@@ -266,18 +270,20 @@ object CodeGeneration extends Pipeline[Program, Unit] {
           ch << ArgLoad(0)
           ch << GetField(cs.name, id.getSymbol.name, id.getType.jvmType)
         }
+        ch << Goto(after)
 
       case This() =>
         // This only makes sense in a non-static method
-        ch << ArgLoad(0)
+        ch << ArgLoad(0) << Goto(after)
 
       case NewIntArray(size) =>
         val nOp = ch.getFreshLabel("op")
         expression(ch, cs, vars, size)(nOp)
         ch << Label(nOp) << NewArray(10) // T_INT == 10
+        ch << Goto(after)
 
       case New(tpe) =>
-        ch << DefaultNew(tpe.getSymbol.name)
+        ch << DefaultNew(tpe.getSymbol.name) << Goto(after)
 
       case boolExpr =>
         val nTrue = ch.getFreshLabel("true")
