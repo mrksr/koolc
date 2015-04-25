@@ -97,16 +97,11 @@ object Parser extends Pipeline[Iterator[Token], Program] {
         }
       )
 
-    val NotP: Parser[ExprTree] =
-      positioned(
-        token(BANG) *> ExpressionP >> { exp => Not(exp) }
-      )
-
     val BraceP: Parser[ExprTree] =
       token(LPAREN) *> ExpressionP *< token(RPAREN)
 
     val NoHeadRecursiveP =
-      LiteralExpressionP || NewP || NewIntArrayP || NotP || BraceP
+      LiteralExpressionP || NewP || NewIntArrayP || BraceP
 
     val MethodReadLengthP: Parser[ExprTree] = {
       val LengthP: Parser[ExprTree => ExprTree] =
@@ -129,6 +124,12 @@ object Parser extends Pipeline[Iterator[Token], Program] {
         case ((token, inner), apx) => (inner /: apx) { case (i, a) => a(i).setPos(token.get) }
       }
     }
+
+    // Not binds stronger than all Operators
+    val NotP: Parser[ExprTree] =
+      positioned[ExprTree](
+        token(BANG) *> MethodReadLengthP >> { exp => Not(exp) }
+      ) || MethodReadLengthP
 
     val OperatorP: Parser[ExprTree] = {
       // High to Low precedence
@@ -154,7 +155,7 @@ object Parser extends Pipeline[Iterator[Token], Program] {
         )
       )
 
-      (MethodReadLengthP /: ops) {
+      (NotP /: ops) {
         case (inner, tkns) => {
           val opP = tkns.keys.map(token).reduce(_ || _)
           inner ** star(head ** opP ** inner) >> { case (i, is) =>
