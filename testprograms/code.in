@@ -1,0 +1,31 @@
+object Wurst {
+    def main(): Unit = {
+        /* println("Hallo, Welt! " + !(5 < 3)); */
+        println((new Blubb()).init());
+    }
+}
+
+class Blubb {
+    var test: Int;
+    var test2: Int[];
+
+    def getSize(): Int = {
+        return 5;
+    }
+
+    def init(): String = {
+        var bla: Int;
+        test2 = new Int[this.getSize()];
+        test2[3] = 4;
+        bla = 5 - 3;
+        test = 7;
+
+        if (true) {
+            println("then");
+        } else {
+            println("else");
+        }
+
+        return "Blubb initialized. bla = " + bla + ", test = " + test+ ", test2[3] = " + test2[3];
+    }
+}
