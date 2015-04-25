@@ -9,7 +9,11 @@ object Printer {
   def apply(t: Tree): String = autoindent(pretty((t, p) => p)(t))
 
   def ast(t: Tree): String = t.toString
-  def annotated(t: Tree): String = autoindent(pretty((t, p) => withType(t, withSymbol(t, p)))(t))
+  def annotated(t: Tree): String = autoindent(
+    pretty(
+      (t, p) => withType(t, withSymbol(t, p))
+    )(t)
+  )
 
   private def autoindent(program: String) = {
     val indentString = "  ";

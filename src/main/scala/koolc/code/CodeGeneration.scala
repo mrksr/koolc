@@ -76,10 +76,10 @@ object CodeGeneration extends Pipeline[Program, Unit] {
     withAfter(ch, expression(ch, ms.classSymbol, withLocals, mt.retExpr))
 
     val ret = mt.retType.getType match {
-      case TInt => IRETURN
-      case TIntArray => ARETURN
-      case TBoolean => IRETURN
-      case TString => ARETURN
+      case TInt       => IRETURN
+      case TIntArray  => ARETURN
+      case TBoolean   => IRETURN
+      case TString    => ARETURN
       case TObject(_) => ARETURN
       case _ => ???
     }
@@ -102,24 +102,30 @@ object CodeGeneration extends Pipeline[Program, Unit] {
   }
 
   private def chooseStore(value: Typed) = value.getType match {
-    case TInt => IStore.apply _
-    case TIntArray => AStore.apply _
-    case TBoolean => IStore.apply _
-    case TString => AStore.apply _
+    case TInt       => IStore.apply _
+    case TIntArray  => AStore.apply _
+    case TBoolean   => IStore.apply _
+    case TString    => AStore.apply _
     case TObject(_) => AStore.apply _
     case _ => ???
   }
 
   private def chooseLoad(value: Typed) = value.getType match {
-    case TInt => ILoad.apply _
-    case TIntArray => ALoad.apply _
-    case TBoolean => ILoad.apply _
-    case TString => ALoad.apply _
+    case TInt       => ILoad.apply _
+    case TIntArray  => ALoad.apply _
+    case TBoolean   => ILoad.apply _
+    case TString    => ALoad.apply _
     case TObject(_) => ALoad.apply _
     case _ => ???
   }
 
-  private def statement(ch: CodeHandler, cs: ClassSymbol, vars: VarSlots, stmt: StatTree)(after: String): Unit = {
+  private def statement( ch: CodeHandler,
+                         cs: ClassSymbol,
+                         vars: VarSlots,
+                         stmt: StatTree
+                       )(
+                         after: String
+                       ): Unit = {
     ch << LineNumber(stmt.line)
     stmt match {
       case Block(stmts) =>
@@ -173,7 +179,13 @@ object CodeGeneration extends Pipeline[Program, Unit] {
     }
   }
 
-  private def expression(ch: CodeHandler, cs: ClassSymbol, vars: VarSlots, expr: ExprTree)(after: String): Unit = {
+  private def expression( ch: CodeHandler,
+                          cs: ClassSymbol,
+                          vars: VarSlots,
+                          expr: ExprTree
+                        )(
+                          after: String
+                        ): Unit = {
     ch << LineNumber(expr.line)
     expr match {
       case StringLit(value) =>
@@ -294,7 +306,14 @@ object CodeGeneration extends Pipeline[Program, Unit] {
     }
   }
 
-  private def branch(ch: CodeHandler, cs: ClassSymbol, vars: VarSlots, expr: ExprTree)(nThen: String, nElse: String): Unit = {
+  private def branch( ch: CodeHandler,
+                      cs: ClassSymbol,
+                      vars: VarSlots,
+                      expr: ExprTree
+                    )(
+                      nThen: String,
+                      nElse: String
+                    ): Unit = {
     ch << LineNumber(expr.line)
     expr match {
       case True() =>
