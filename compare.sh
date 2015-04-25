@@ -16,6 +16,6 @@ ${=MYC} $TESTDIR/$1 -d $OWND
 java -cp $REFD $CLASS > $REFO
 java -cp $OWND $CLASS > $OWNO
 sdiff $REFO $OWNO
-diff $REFO $OWNO
+diff -q $REFO $OWNO
 
 rm -r $REFD $OWND $REFO $OWNO
