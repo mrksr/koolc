@@ -77,7 +77,9 @@ object TypeChecking extends Pipeline[Program, Program] {
     def single(m: MethodSymbol): Unit = m.overridden match {
       case None =>
       case Some(parent) => {
-        if (m.getType != parent.getType) {
+        val TMethod(_, mretType) = m.getType
+        val TMethod(_, pretType) = parent.getType
+        if (mretType != pretType) {
           ctx.reporter.error("Overridden method '%s' has different return Type.".format(m.name), m)
           ctx.reporter.error("First declaration is here.", parent)
         } else {
