@@ -12,19 +12,19 @@ object TypeChecking extends Pipeline[Program, Program] {
   /** Typechecking does not produce a value, but has the side effect of
    * attaching types to trees and potentially outputting error messages. */
   def run(ctx: Context)(prog: Program): Program = {
-    classes(ctx)(prog)
-    variables(ctx)(prog)
-    methods(ctx)(prog)
+    classes(prog)(ctx)
+    variables(prog)(ctx)
+    methods(prog)(ctx)
     ctx.reporter.terminateIfErrors
-    statements(ctx)(prog)
+    statements(prog)(ctx)
     ctx.reporter.terminateIfErrors
     prog
   }
 
-  private def classes(ctx: Context)(t: Tree): Unit = t match {
+  private def classes(t: Tree)(implicit ctx: Context): Unit = t match {
     case Program(main, clss) =>
-      classes(ctx)(main)
-      clss.foreach(classes(ctx))
+      classes(main)
+      clss.foreach(classes)
 
     case m@MainObject(_, _) =>
       m.getSymbol.setType(TUntyped)
@@ -35,7 +35,7 @@ object TypeChecking extends Pipeline[Program, Program] {
     case _ =>
   }
 
-  private def variables(ctx: Context)(t: Tree): Unit = {
+  private def variables(t: Tree)(implicit ctx: Context): Unit = {
     def single(sym: Symbol, tpeTree: TypeTree): Type = {
       val tpe: Type = tpeTree match {
         case IntType() => TInt
@@ -52,11 +52,11 @@ object TypeChecking extends Pipeline[Program, Program] {
 
     t match {
       case Program(_, classes) =>
-        classes.foreach(variables(ctx))
+        classes.foreach(variables)
 
       case ClassDecl(_, _, vars, methods) =>
-        vars.foreach(variables(ctx))
-        methods.foreach(variables(ctx))
+        vars.foreach(variables)
+        methods.foreach(variables)
 
       case v@VarDecl(tpe, _) =>
         single(v.getSymbol, tpe)
@@ -66,14 +66,14 @@ object TypeChecking extends Pipeline[Program, Program] {
 
       case m@MethodDecl(retType, _, args, vars, _, _) =>
         m.getSymbol.setType(TMethod(m.getSymbol, single(m.getSymbol, retType)))
-        args.foreach(variables(ctx))
-        vars.foreach(variables(ctx))
+        args.foreach(variables)
+        vars.foreach(variables)
 
       case _ =>
     }
   }
 
-  private def methods(ctx: Context)(prog: Program): Unit = {
+  private def methods(prog: Program)(implicit ctx: Context): Unit = {
     def single(m: MethodSymbol): Unit = m.overridden match {
       case None =>
       case Some(parent) => {
@@ -96,7 +96,7 @@ object TypeChecking extends Pipeline[Program, Program] {
     prog.classes.foreach(_.getSymbol.methods.values.foreach(single))
   }
 
-  private def statements(ctx: Context)(prog: Program): Unit = {
+  private def statements(prog: Program)(implicit ctx: Context): Unit = {
     def tcExpr(expr: ExprTree, expected: Type*): Type = {
       val tpe: Type = expr match {
         // Base Cases
