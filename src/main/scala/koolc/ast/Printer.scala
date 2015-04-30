@@ -6,13 +6,13 @@ import analyzer.Symbols._
 import analyzer.Types._
 
 object Printer {
-  def apply(t: Tree): String = autoindent(pretty((t, p) => p)(t))
+  def apply(t: Tree): String = autoindent(pretty(t)((t, p) => p))
 
   def ast(t: Tree): String = t.toString
   def annotated(t: Tree): String = autoindent(
-    pretty(
+    pretty(t)(
       (t, p) => withType(t, withSymbol(t, p))
-    )(t)
+    )
   )
 
   private def autoindent(program: String) = {
@@ -56,15 +56,15 @@ object Printer {
     case _ => p
   }
 
-  def pretty(annotator: (Tree, String) => String)(t: Tree): String = {
-    def list(ts: List[Tree], join: String) = ts.map(pretty(annotator)) match {
+  def pretty(t: Tree)(implicit annotator: (Tree, String) => String): String = {
+    def list(ts: List[Tree], join: String) = ts.map(pretty) match {
       case Nil => ""
       case ps => ps.reduce(_ + join + _)
     }
 
     def option(to: Option[Tree], prefix: String) = to match {
       case None => ""
-      case Some(t) => "%s%s".format(prefix, pretty(annotator)(t))
+      case Some(t) => "%s%s".format(prefix, pretty(t))
     }
 
     def block(t: StatTree) = t match {
@@ -75,38 +75,38 @@ object Printer {
     val p = t match {
       case Program(main, classes)                              => {
         "%s%s".format(
-          pretty(annotator)(main),
+          pretty(main),
           list(classes, ""))
       }
       case MainObject(id, stats)                               => {
         "object %s {def main(): Unit = {%s}}".format(
-          pretty(annotator)(id),
+          pretty(id),
           list(stats, ""))
       }
       case ClassDecl(id, parent, vars, methods)                => {
         "class %s%s {%s%s}".format(
-          pretty(annotator)(id),
+          pretty(id),
           option(parent, " extends "),
           list(vars, ""),
           list(methods, ""))
       }
       case VarDecl(tpe, id)                                    => {
         "var %s: %s;".format(
-          pretty(annotator)(id),
-          pretty(annotator)(tpe))
+          pretty(id),
+          pretty(tpe))
       }
       case Formal(tpe, id)                                     => {
         "%s: %s".format(
-          pretty(annotator)(id),
-          pretty(annotator)(tpe))
+          pretty(id),
+          pretty(tpe))
       }
       case MethodDecl(retType, id, args, vars, stats, retExpr) => {
         "def %s(%s): %s = {%s%sreturn %s;}".format(
-          pretty(annotator)(id),
+          pretty(id),
           list(args, ", "),
-          pretty(annotator)(retType), list(vars, ""),
+          pretty(retType), list(vars, ""),
           list(stats, ""),
-          pretty(annotator)(retExpr))
+          pretty(retExpr))
       }
 
       case IntArrayType()                                      => {
@@ -128,84 +128,84 @@ object Printer {
       }
       case If(expr, thn, els)                                  => {
         "if (%s) %s%s".format(
-          pretty(annotator)(expr),
-          pretty(annotator)(block(thn)),
+          pretty(expr),
+          pretty(block(thn)),
           option(els.map(block), "else "))
       }
       case While(expr, stat)                                   => {
         "while (%s) %s".format(
-          pretty(annotator)(expr),
-          pretty(annotator)(block(stat)))
+          pretty(expr),
+          pretty(block(stat)))
       }
       case Println(expr)                                       => {
         "println(%s);".format(
-          pretty(annotator)(expr))
+          pretty(expr))
       }
       case Assign(id, expr)                                    => {
         "%s = %s;".format(
-          pretty(annotator)(id),
-          pretty(annotator)(expr))
+          pretty(id),
+          pretty(expr))
       }
       case ArrayAssign(id, index, expr)                        => {
         "%s[%s] = %s;".format(
-          pretty(annotator)(id),
-          pretty(annotator)(index),
-          pretty(annotator)(expr))
+          pretty(id),
+          pretty(index),
+          pretty(expr))
       }
 
       case And(lhs, rhs)                                       => {
         "%s && %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case Or(lhs, rhs)                                        => {
         "%s || %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case Plus(lhs, rhs)                                      => {
         "%s + %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case Minus(lhs, rhs)                                     => {
         "%s - %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case Times(lhs, rhs)                                     => {
         "%s * %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case Div(lhs, rhs)                                       => {
         "%s / %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case LessThan(lhs, rhs)                                  => {
         "%s < %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case Equals(lhs, rhs)                                    => {
         "%s == %s".format(
-          pretty(annotator)(lhs),
-          pretty(annotator)(rhs))
+          pretty(lhs),
+          pretty(rhs))
       }
       case ArrayRead(arr, index)                               => {
         "%s[%s]".format(
-          pretty(annotator)(arr),
-          pretty(annotator)(index))
+          pretty(arr),
+          pretty(index))
       }
       case ArrayLength(arr)                                    => {
         "%s.length".format(
-          pretty(annotator)(arr))
+          pretty(arr))
       }
       case MethodCall(obj, meth, args)                         => {
         "%s.%s(%s)".format(
-          pretty(annotator)(obj),
-          pretty(annotator)(meth),
+          pretty(obj),
+          pretty(meth),
           list(args, ", "))
       }
       case IntLit(value)                                       => {
@@ -230,15 +230,15 @@ object Printer {
       }
       case NewIntArray(size)                                   => {
         "new Int[%s]".format(
-          pretty(annotator)(size))
+          pretty(size))
       }
       case New(tpe)                                            => {
         "new %s()".format(
-          pretty(annotator)(tpe))
+          pretty(tpe))
       }
       case Not(expr)                                           => {
         "! %s".format(
-          pretty(annotator)(expr))
+          pretty(expr))
       }
     }
 

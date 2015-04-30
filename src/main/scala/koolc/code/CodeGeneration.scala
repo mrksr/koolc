@@ -72,8 +72,8 @@ object CodeGeneration extends Pipeline[Program, Unit] {
       case (vars, local) => vars + (local -> ch.getFreshVar)
     }
 
-    withAfter(ch, statement(ch, ms.classSymbol, withLocals, Block(mt.stats)))
-    withAfter(ch, expression(ch, ms.classSymbol, withLocals, mt.retExpr))
+    withAfter(s => statement(Block(mt.stats))(s)(ch, ms.classSymbol, withLocals))(ch)
+    withAfter(e => expression(mt.retExpr)(e)(ch, ms.classSymbol, withLocals))(ch)
 
     val ret = mt.retType.getType match {
       case TInt       => IRETURN
@@ -89,13 +89,17 @@ object CodeGeneration extends Pipeline[Program, Unit] {
   }
 
   private def main(ch: CodeHandler, stmts: List[StatTree], cs: ClassSymbol): Unit = {
-    withAfter(ch, statement(ch, cs, Map(), Block(stmts)))
+    withAfter(a => statement(Block(stmts))(a)(ch, cs, Map()))(ch)
     ch << RETURN
 
     ch.freeze
   }
 
-  private def withAfter(ch: CodeHandler, func: String => Unit): Unit = {
+  private def withAfter( func: String => Unit
+                       )(
+                         implicit
+                         ch: CodeHandler
+                       ): Unit = {
     val after = ch.getFreshLabel("after")
     func(after)
     ch << Label(after)
@@ -119,39 +123,41 @@ object CodeGeneration extends Pipeline[Program, Unit] {
     case _ => ???
   }
 
-  private def statement( ch: CodeHandler,
-                         cs: ClassSymbol,
-                         vars: VarSlots,
-                         stmt: StatTree
+  private def statement( stmt: StatTree
                        )(
                          after: String
+                       )(
+                         implicit
+                         ch: CodeHandler,
+                         cs: ClassSymbol,
+                         vars: VarSlots
                        ): Unit = {
     ch << LineNumber(stmt.line)
     stmt match {
       case Block(stmts) =>
-        stmts.foreach(st => withAfter(ch, statement(ch, cs, vars, st)))
+        stmts.foreach(st => withAfter(statement(st)))
         ch << Goto(after)
 
       case If(expr, thn, els) =>
         val nTrue = ch.getFreshLabel("true")
         val nFalse = ch.getFreshLabel("false")
-        branch(ch, cs, vars, expr)(nTrue, nFalse)
+        branch(expr)(nTrue, nFalse)
         ch << Label(nTrue)
-        statement(ch, cs, vars, thn)(after)
+        statement(thn)(after)
         ch << Goto(after) << Label(nFalse)
-        els.map(statement(ch, cs, vars, _)(after))
+        els.map(statement(_)(after))
 
       case While(expr, stat) =>
         val test = ch.getFreshLabel("test")
         val body = ch.getFreshLabel("body")
         ch << Label(test)
-        branch(ch, cs, vars, expr)(body, after)
+        branch(expr)(body, after)
         ch << Label(body)
-        statement(ch, cs, vars, stat)(test)
+        statement(stat)(test)
 
       case Println(expr) =>
         ch << GetStatic("java/lang/System", "out", "Ljava/io/PrintStream;")
-        withAfter(ch, expression(ch, cs, vars, expr))
+        withAfter(expression(expr))
         ch << InvokeVirtual(
           "java/io/PrintStream",
           "println",
@@ -160,11 +166,11 @@ object CodeGeneration extends Pipeline[Program, Unit] {
 
       case Assign(id, expr) =>
         if (vars.contains(id.getSymbol)) {
-          withAfter(ch, expression(ch, cs, vars, expr))
+          withAfter(expression(expr))
           ch << chooseStore(expr)(vars(id.getSymbol))
         } else {
           ch << ArgLoad(0)
-          withAfter(ch, expression(ch, cs, vars, expr))
+          withAfter(expression(expr))
           ch << PutField(cs.name, id.getSymbol.name, id.getType.jvmType)
         }
         ch << Goto(after)
@@ -176,18 +182,20 @@ object CodeGeneration extends Pipeline[Program, Unit] {
           ch << ArgLoad(0)
           ch << GetField(cs.name, id.getSymbol.name, id.getType.jvmType)
         }
-        withAfter(ch, expression(ch, cs, vars, index))
-        withAfter(ch, expression(ch, cs, vars, expr))
+        withAfter(expression(index))
+        withAfter(expression(expr))
         ch << IASTORE << Goto(after)
     }
   }
 
-  private def expression( ch: CodeHandler,
-                          cs: ClassSymbol,
-                          vars: VarSlots,
-                          expr: ExprTree
+  private def expression( expr: ExprTree
                         )(
                           after: String
+                        )(
+                          implicit
+                          ch: CodeHandler,
+                          cs: ClassSymbol,
+                          vars: VarSlots
                         ): Unit = {
     ch << LineNumber(expr.line)
     expr match {
@@ -201,23 +209,23 @@ object CodeGeneration extends Pipeline[Program, Unit] {
         case TInt =>
           val nRhs = ch.getFreshLabel("rhs")
           val nOp = ch.getFreshLabel("op")
-          expression(ch, cs, vars, lhs)(nRhs)
+          expression(lhs)(nRhs)
           ch << Label(nRhs)
-          expression(ch, cs, vars, rhs)(nOp)
+          expression(rhs)(nOp)
           ch << Label(nOp) << IADD << Goto(after)
 
         case TString =>
           val nalhs = ch.getFreshLabel("afterLHS")
           val narhs = ch.getFreshLabel("afterRHS")
           ch << DefaultNew("java/lang/StringBuilder")
-          expression(ch, cs, vars, lhs)(nalhs)
+          expression(lhs)(nalhs)
           ch << Label(nalhs) <<
             InvokeVirtual(
               "java/lang/StringBuilder",
               "append",
               "(%s)Ljava/lang/StringBuilder;".format(lhs.getType.jvmType)
             )
-          expression(ch, cs, vars, rhs)(narhs)
+          expression(rhs)(narhs)
           ch << Label(narhs) <<
             InvokeVirtual(
               "java/lang/StringBuilder",
@@ -237,39 +245,39 @@ object CodeGeneration extends Pipeline[Program, Unit] {
       case Minus(lhs, rhs) =>
         val nRhs = ch.getFreshLabel("rhs")
         val nOp = ch.getFreshLabel("op")
-        expression(ch, cs, vars, lhs)(nRhs)
+        expression(lhs)(nRhs)
         ch << Label(nRhs)
-        expression(ch, cs, vars, rhs)(nOp)
+        expression(rhs)(nOp)
         ch << Label(nOp) << ISUB << Goto(after)
 
       case Times(lhs, rhs) =>
         val nRhs = ch.getFreshLabel("rhs")
         val nOp = ch.getFreshLabel("op")
-        expression(ch, cs, vars, lhs)(nRhs)
+        expression(lhs)(nRhs)
         ch << Label(nRhs)
-        expression(ch, cs, vars, rhs)(nOp)
+        expression(rhs)(nOp)
         ch << Label(nOp) << IMUL << Goto(after)
 
       case Div(lhs, rhs) =>
         val nRhs = ch.getFreshLabel("rhs")
         val nOp = ch.getFreshLabel("op")
-        expression(ch, cs, vars, lhs)(nRhs)
+        expression(lhs)(nRhs)
         ch << Label(nRhs)
-        expression(ch, cs, vars, rhs)(nOp)
+        expression(rhs)(nOp)
         ch << Label(nOp) << IDIV << Goto(after)
 
       case ArrayRead(arr, index) =>
-        withAfter(ch, expression(ch, cs, vars, arr))
-        withAfter(ch, expression(ch, cs, vars, index))
+        withAfter(expression(arr))
+        withAfter(expression(index))
         ch << IALOAD << Goto(after)
 
       case ArrayLength(arr) =>
-        withAfter(ch, expression(ch, cs, vars, arr))
+        withAfter(expression(arr))
         ch << ARRAYLENGTH << Goto(after)
 
       case MethodCall(obj, meth, args) =>
-        withAfter(ch, expression(ch, cs, vars, obj))
-        args.foreach(st => withAfter(ch, expression(ch, cs, vars, st)))
+        withAfter(expression(obj))
+        args.foreach(st => withAfter(expression(st)))
         val mts = meth.getSymbol
         ch << InvokeVirtual(
           obj.getType.toString,
@@ -293,7 +301,7 @@ object CodeGeneration extends Pipeline[Program, Unit] {
 
       case NewIntArray(size) =>
         val nOp = ch.getFreshLabel("op")
-        expression(ch, cs, vars, size)(nOp)
+        expression(size)(nOp)
         ch << Label(nOp) << NewArray(10) // T_INT == 10
         ch << Goto(after)
 
@@ -303,19 +311,21 @@ object CodeGeneration extends Pipeline[Program, Unit] {
       case boolExpr =>
         val nTrue = ch.getFreshLabel("true")
         val nFalse = ch.getFreshLabel("false")
-        branch(ch, cs, vars, boolExpr)(nTrue, nFalse)
+        branch(boolExpr)(nTrue, nFalse)
         ch << Label(nTrue) << Ldc(1) << Goto(after)
         ch << Label(nFalse) << Ldc(0) << Goto(after)
     }
   }
 
-  private def branch( ch: CodeHandler,
-                      cs: ClassSymbol,
-                      vars: VarSlots,
-                      expr: ExprTree
+  private def branch( expr: ExprTree
                     )(
                       nThen: String,
                       nElse: String
+                    )(
+                      implicit
+                      ch: CodeHandler,
+                      cs: ClassSymbol,
+                      vars: VarSlots
                     ): Unit = {
     ch << LineNumber(expr.line)
     expr match {
@@ -326,34 +336,34 @@ object CodeGeneration extends Pipeline[Program, Unit] {
         ch << Goto(nElse)
 
       case Not(expr) =>
-        branch(ch, cs, vars, expr)(nElse, nThen)
+        branch(expr)(nElse, nThen)
 
       case And(lhs, rhs) =>
         val nNext = ch.getFreshLabel("next")
-        branch(ch, cs, vars, lhs)(nNext, nElse)
+        branch(lhs)(nNext, nElse)
         ch << Label(nNext)
-        branch(ch, cs, vars, rhs)(nThen, nElse)
+        branch(rhs)(nThen, nElse)
 
       case Or(lhs, rhs) =>
         val nNext = ch.getFreshLabel("next")
-        branch(ch, cs, vars, lhs)(nThen, nNext)
+        branch(lhs)(nThen, nNext)
         ch << Label(nNext)
-        branch(ch, cs, vars, rhs)(nThen, nElse)
+        branch(rhs)(nThen, nElse)
 
       case LessThan(lhs, rhs) =>
         val nRhs = ch.getFreshLabel("nRhs")
         val nComp = ch.getFreshLabel("nComp")
-        expression(ch, cs, vars, lhs)(nRhs)
+        expression(lhs)(nRhs)
         ch << Label(nRhs)
-        expression(ch, cs, vars, rhs)(nComp)
+        expression(rhs)(nComp)
         ch << Label(nComp) << If_ICmpLt(nThen) << Goto(nElse)
 
       case Equals(lhs, rhs) =>
         val nRhs = ch.getFreshLabel("nRhs")
         val nComp = ch.getFreshLabel("nComp")
-        expression(ch, cs, vars, lhs)(nRhs)
+        expression(lhs)(nRhs)
         ch << Label(nRhs)
-        expression(ch, cs, vars, rhs)(nComp)
+        expression(rhs)(nComp)
 
         val comparison = lhs.getType match {
           case TInt => If_ICmpEq
@@ -364,7 +374,7 @@ object CodeGeneration extends Pipeline[Program, Unit] {
 
       case other =>
         val nNext = ch.getFreshLabel("next")
-        expression(ch, cs, vars, other)(nNext)
+        expression(other)(nNext)
         ch << Label(nNext) << IfEq(nElse) << Goto(nThen)
     }
   }
