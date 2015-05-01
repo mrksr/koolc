@@ -30,8 +30,8 @@ object NameAnalysis extends Pipeline[Program, Program] {
       ctx.reporter.error("First declaration is here.", a)
     }
 
-    def map[S <: Symbol](ss: List[Symbolic[S]], taken: Map[String, S]): Map[String, S] =
-      (Map[String, S]() /: ss) {
+    def map[T <: Symbol](ss: List[Symbolic[T]], taken: Map[String, T]): Map[String, T] =
+      (Map[String, T]() /: ss) {
         (m, sc) => {
           val s = sc.getSymbol
           if (m.contains(s.name) || taken.contains(s.name)) {
@@ -43,8 +43,8 @@ object NameAnalysis extends Pipeline[Program, Program] {
         }
       }
 
-    def list[S <: Symbol](ss: List[Symbolic[S]]): List[S] =
-      (List[S]() /: ss) {
+    def list[T <: Symbol](ss: List[Symbolic[T]]): List[T] =
+      (List[T]() /: ss) {
         (l, sc) => {
           val s = sc.getSymbol
           if (l.exists(_.name == s.name)) {
@@ -55,7 +55,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
         }
       }.reverse
 
-    def propagate[S <: Symbol](t: Tree, parent: Option[Symbolic[S]]): Unit = t match {
+    def propagate[T <: Symbol](t: Tree, parent: Option[Symbolic[T]]): Unit = t match {
       case o@MainObject(id, stats) => {
         val s = o.setSymbol(new ClassSymbol(id.value)).getSymbol
         s.setPos(o)

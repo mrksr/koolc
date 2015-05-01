@@ -32,7 +32,7 @@ class Reporter {
     System.err.println(msg)
   }
 
-  def terminateIfErrors = {
+  def terminateIfErrors() = {
     if (hasErrors) {
       err("There were errors.")
       sys.exit(1);

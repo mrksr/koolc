@@ -184,7 +184,7 @@ object Lexer extends Pipeline[File, Iterator[Token]] {
     (
       enclosedP(string("//"), string("\n"), star(one[Char](_ != '\n'))) ||
       enclosedP(string("//"), eof, star(one[Char](_ != '\n'))) ||
-      enclosedP(string("/*"), string("*/"), star(two[Char]((_, _) != ('*', '/')))) ||
+      enclosedP(string("/*"), string("*/"), star(two[Char]((_, _) != (('*', '/'))))) ||
       enclosedP(string("/*"), eof, star(one[Char](_ => true)))
     ) >> const(None)
 
