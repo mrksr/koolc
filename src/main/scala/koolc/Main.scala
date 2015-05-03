@@ -37,6 +37,10 @@ object Main {
         pretty = true
         processOption(args)
 
+      case "--print" :: args =>
+        pretty = true
+        processOption(args)
+
       case "--typed" :: args =>
         typed = true
         processOption(args)
@@ -73,7 +77,6 @@ object Main {
 
       println(Printer.ast(program))
     } else if (ctx.pretty) {
-      //TODO: This is not a strict pretty
       val pipeline = Lexer andThen Parser andThen NameAnalysis andThen TypeChecking
       val program = pipeline.run(ctx)(ctx.file)
 
