@@ -5,20 +5,27 @@ import utils._
 import ast.Trees._
 import Symbols._
 
+import scala.collection.mutable.{Set => MutableSet}
+
 object NameAnalysis extends Pipeline[Program, Program] {
   def run(ctx: Context)(prog: Program): Program = {
     // All methods here have heavy side-effects!
-    val (gs, vars, clss) = initial(ctx)(prog)
+    val (gs, vars, clss) = initial(ctx)(prog)(MutableSet())
     ctx.reporter.terminateIfErrors
-    attach(ctx)(prog, gs, vars, clss)
+    attach(ctx)(prog, gs, vars.toSet, clss)
     ctx.reporter.terminateIfErrors
     inheritance(ctx)(prog, gs)
     ctx.reporter.terminateIfErrors
     prog
   }
 
-  private var vars = Set[VariableSymbol]()
-  private def initial[S <: Symbol](ctx: Context)(prog: Program) = {
+  private def initial[S <: Symbol]( ctx: Context
+                                  )(
+                                    prog: Program
+                                  )(
+                                    implicit
+                                    varSet: MutableSet[VariableSymbol]
+                                  ) = {
     def doubleDeclaration[T <: Symbol](a: T, b: T) {
       val tpe = a match {
         case _: ClassSymbol => "Class-"
@@ -101,14 +108,14 @@ object NameAnalysis extends Pipeline[Program, Program] {
         val s = v.setSymbol(new VariableSymbol(id.value)).getSymbol
         s.setPos(v)
         id.setSymbol(s)
-        vars += s
+        varSet += s
       }
 
       case f@Formal(tpe, id) => {
         val s = f.setSymbol(new VariableSymbol(id.value)).getSymbol
         s.setPos(f)
         id.setSymbol(s)
-        vars += s
+        varSet += s
       }
 
       case _ =>
@@ -129,7 +136,7 @@ object NameAnalysis extends Pipeline[Program, Program] {
     }
 
     val clss = gs.classes.values.toSet
-    (gs, vars, clss)
+    (gs, varSet, clss)
   }
 
   private def attach( ctx: Context )(
