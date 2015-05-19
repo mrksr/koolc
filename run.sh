@@ -42,3 +42,5 @@ for p in $TESTDIR/*; do
     java -cp $OWND $BASE > $OWNO
     diff -q $REFO $OWNO
 done
+
+rm -r $REFD $OWND $REFO $OWNO

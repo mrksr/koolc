@@ -4,10 +4,10 @@ REFC="scala -cp ./reference/koolc_2.11-1.3.1.jar:./reference/cafebabe_2.11-1.2.j
 MYC="scala -cp ./target/scala-2.11/koolc_2.11-1.0.jar:./lib/cafebabe_2.10-1.2.jar koolc.Main"
 TESTDIR="./testprograms/lab3/valid"
 
-REFD=$(mktemp -d "/tmp/kool.ref.XXX")
-OWND=$(mktemp -d "/tmp/kool.own.XXX")
-REFO=$(mktemp "/tmp/kool.ref.out.XXX")
-OWNO=$(mktemp "/tmp/kool.own.out.XXX")
+REFD=$(mktemp -d --tmpdir "kool.ref.XXX")
+OWND=$(mktemp -d --tmpdir "kool.own.XXX")
+REFO=$(mktemp --tmpdir "kool.ref.out.XXX")
+OWNO=$(mktemp --tmpdir "kool.own.out.XXX")
 
 CLASS=$(basename $1 ".kool")
 [[ -n "$2" ]] && CLASS=$2
